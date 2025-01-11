@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="google-adsense-account" content="ca-pub-8441643141132888">
+  <script async custom-element="amp-ad" src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Translation Tool</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <style>
+    .chat-bubble {
+      max-width: 80%;
+      margin: 8px;
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .user-bubble {
+      background-color: #DCF8C6;
+      margin-left: auto;
+    }
+    .ai-bubble {
+      background-color: #E8E8E8;
+      margin-right: auto;
+    }
+    .loading {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+    #recordingStatus {
+      display: none;
+      color: red;
+      margin-left: 8px;
+    }
+    .typing-indicator {
+      display: inline-block;
+      width: 100px; 
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 3px solid #000; 
+      animation: typing 2s steps(3) infinite;
+    }
+    @keyframes typing {
+      0% { width: 0; }
+      100% { width: 100%; }
+    }
+    
+    /* New styles for file upload */
+    .file-upload {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    
+    .file-upload-label {
+      display: block;
+      padding: 12px 20px;
+      background-color: #4F46E5;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.3s;
+    }
+    
+    .file-upload-label:hover {
+      background-color: #4338CA;
+    }
+    
+    .file-upload input[type="file"] {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+    
+    .file-name {
+      margin-top: 8px;
+      font-size: 0.875rem;
+      color: #6B7280;
+    }
+
+    .upload-icon {
+      margin-right: 8px;
+    }
+    
+    #speakButton { 
+      display: block;
+      margin: 0 auto;
+    }
+    
+    #inputText { 
+      border-radius: 5px 0 0 5px; 
+    }
+    
+    #micButton {
+      border-radius: 0 5px 5px 0; 
+      border-left: none; 
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="overlay" class="overlay"></div>
+  <div id="loading" class="loading">
+    <div class="bg-white p-4 rounded-lg shadow-lg">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+      <p class="mt-2">Processing...</p>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-3xl font-bold text-center mb-8">Translation Tool</h1>
+
+    <div id="mainSection" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+      <div class="mb-4 flex items-center"> 
+        <input type="text" id="inputText" class="flex-grow p-2 border rounded-l" placeholder="Type or paste text here...">
+        <button id="micButton" class="bg-blue-500 text-white px-4 py-2 hover:bg-blue-600 rounded-r flex items-center">
+          🎤
+          <span id="recordingStatus">Recording...</span>
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Upload Image for Text Extraction:</label>
+        <div class="file-upload">
+          <label class="file-upload-label">
+            <span class="upload-icon">📁</span>
+            Choose an image
+          </label>
+          <input type="file" id="imageInput" accept="image/*">
+          <div class="file-name" id="fileName"></div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Select Target Language:</label>
+        <select id="languageSelect" class="w-full p-2 border rounded"></select>
+      </div>
+
+      <button id="translateButton" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full mb-4">
+        Translate
+      </button>
+
+      <div id="outputSection" class="mt-4">
+        <h3 class="font-bold mb-2">Translation Result:</h3>
+        <div id="translationOutput" class="p-4 bg-gray-100 rounded min-h-[100px]"></div>
+       <br>
+        <button id="speakButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2 hidden">
+            🔊 Speak Translation
+        </button>
+      </div>
+
+      <div id="statusMessage" class="mt-4 text-center text-green-600"></div>
+    </div>
+
+    <amp-ad width="100vw" height="320"
+            type="adsense"
+            data-ad-client="ca-pub-8441643141132888"
+            data-ad-slot="1307688755"
+            data-auto-format="rspv"
+            data-full-width="">
+      <div overflow=""></div>
+    </amp-ad>
+
+    <div id="chatSection" class="hidden bg-white rounded-lg shadow-lg">
+      <div class="bg-blue-500 text-white p-4 rounded-t-lg flex items-center">
+        <button id="backButton" class="mr-4 text-2xl">←</button>
+        <h2 class="text-xl font-bold">AI Culture Chat</h2>
+      </div>
+
+      <div id="chatMessages" class="h-[400px] overflow-y-auto p-4"></div>
+      <div id="aiTyping" class="p-4 flex items-center justify-start hidden">
+        <span class="typing-indicator">AI is typing...</span>
+      </div> 
+
+      <div class="p-4 border-t flex gap-2">
+        <input type="text" id="chatInput" class="flex-grow p-2 border rounded" placeholder="Ask about languages and cultures...">
+        <button id="sendMessage" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">Send</button>
+      </div>
+    </div>
+
+    <button id="openChat" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full mt-4">
+      Chat with AI Culture Assistant
+    </button>
+  </div>
+
+  <script>
+    const LANGUAGE_OPTIONS = {
+      "Afrikaans": "af", "Albanian": "sq", "Amharic": "am", "Arabic": "ar", "Armenian": "hy", "Azerbaijani": "az",
+      "Basque": "eu", "Belarusian": "be", "Bengali": "bn", "Bosnian": "bs", "Bulgarian": "bg", "Catalan": "ca",
+      "Cebuano": "ceb", "Chichewa": "ny", "Chinese (Simplified)": "zh-CN", "Chinese (Traditional)": "zh-TW", "Corsican": "co",
+      "Croatian": "hr", "Czech": "cs", "Danish": "da", "Dutch": "nl", "English": "en", "Esperanto": "eo", "Estonian": "et",
+      "Filipino": "tl", "Finnish": "fi", "French": "fr", "Frisian": "fy", "Galician": "gl", "Georgian": "ka", "German": "de",
+      "Greek": "el", "Gujarati": "gu", "Haitian Creole": "ht", "Hausa": "ha", "Hawaiian": "haw", "Hebrew": "he", "Hindi": "hi",
+      "Hmong": "hmn", "Hungarian": "hu", "Icelandic": "is", "Igbo": "ig", "Indonesian": "id", "Irish": "ga", "Italian": "it",
+      "Japanese": "ja", "Javanese": "jw", "Kannada": "kn", "Kazakh": "kk", "Khmer": "km", "Korean": "ko", "Kurdish (Kurmanji)": "ku",
+      "Kyrgyz": "ky", "Lao": "lo", "Latin": "la", "Latvian": "lv", "Lithuanian": "lt", "Luxembourgish": "lb", "Macedonian": "mk",
+      "Malagasy": "mg", "Malay": "ms", "Malayalam": "ml", "Maltese": "mt", "Maori": "mi", "Marathi": "mr", "Mongolian": "mn",
+      "Myanmar (Burmese)": "my", "Nepali": "ne", "Norwegian": "no", "Nyanja": "ny", "Odia": "or", "Pashto": "ps", "Persian": "fa",
+      "Polish": "pl", "Portuguese": "pt", "Punjabi": "pa", "Romanian": "ro", "Russian": "ru", "Samoan": "sm", "Scots Gaelic": "gd",
+      "Serbian": "sr", "Sesotho": "st", "Shona": "sn", "Sindhi": "sd", "Sinhala": "si", "Slovak": "sk", "Slovenian": "sl",
+      "Somali": "so", "Spanish": "es", "Sundanese": "su", "Swahili": "sw", "Swedish": "sv", "Tajik": "tg", "Tamil": "ta",
+      "Tatar": "tt", "Telugu": "te", "Thai": "th", "Turkish": "tr", "Turkmen": "tk", "Ukrainian": "uk", "Urdu": "ur",
+      "Uyghur": "ug", "Uzbek": "uz", "Vietnamese": "vi", "Welsh": "cy", "Xhosa": "xh", "Yiddish": "yi", "Yoruba": "yo", "Zulu": "zu"
+    };
+
+    function showLoading() {
+      document.getElementById('overlay').style.display = 'block';
+      document.getElementById('loading').style.display = 'block';
+    }
+
+    function hideLoading() {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showStatus(message, type = 'success') {
+      const statusElement = document.getElementById('statusMessage');
+      statusElement.textContent = message;
+      statusElement.className = `mt-4 text-center ${type === 'error' ? 'text-red-600' : 
+        type === 'info' ? 'text-blue-600' : 
+        'text-green-600'}`;    
+    }
+
+    const languageSelect = document.getElementById('languageSelect');
+    Object.entries(LANGUAGE_OPTIONS).forEach(([language, code]) => {
+      const option = document.createElement('option');
+      option.value = code;
+      option.textContent = language;
+      languageSelect.appendChild(option);
+    });
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    const micButton = document.getElementById('micButton');
+    const recordingStatus = document.getElementById('recordingStatus');
+
+    micButton.addEventListener('click', async () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        recordingStatus.style.display = 'none';
+        micButton.classList.remove('bg-red-500');
+        micButton.classList.add('bg-blue-500');
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.addEventListener('dataavailable', event => {
+          audioChunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener('stop', async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const formData = new FormData();
+          formData.append('audio', audioBlob);
+
+          showLoading();
+          try {
+            const response = await fetch('/speech-to-text', {
+              method: 'POST',
+              body: formData
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            document.getElementById('inputText').value = data.text;
+            showStatus('Speech recognized successfully');
+          } catch (error) {
+            showStatus(error.message, 'error');
+          } finally {
+            hideLoading();
+          }
+
+          stream.getTracks().forEach(track => track.stop());
+        });
+
+        mediaRecorder.start();
+        recordingStatus.style.display = 'inline';
+        micButton.classList.remove('bg-blue-500');
+        micButton.classList.add('bg-red-500');
+        showStatus('Recording... Click again to stop', 'info');
+      } catch (error) {
+        showStatus('Microphone access denied', 'error');
+      }
+    });
+
+    document.getElementById('translateButton').addEventListener('click', async () => {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) {
+        showStatus('Please enter text to translate', 'error');
+        return;
+      }
+
+      showLoading();
+      try {
+        const response = await fetch('/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            language: languageSelect.value
+          })
+        });
+
+        
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById('translationOutput').textContent = data.translation;
+        showStatus('Translation completed successfully');
+
+        // Fixed text-to-speech implementation
+        const speakButton = document.getElementById('speakButton');
+        
+        if ('speechSynthesis' in window) {
+          speakButton.classList.remove('hidden');
+          
+          // Remove any existing event listeners
+          speakButton.replaceWith(speakButton.cloneNode(true));
+          
+          // Get the new button reference
+          const newSpeakButton = document.getElementById('speakButton');
+          
+          newSpeakButton.addEventListener('click', () => {
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+            
+            const text = document.getElementById('translationOutput').textContent;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = languageSelect.value;
+            
+            // Add error handling
+            utterance.onerror = (event) => {
+              showStatus('Error playing speech', 'error');
+              console.error('Speech synthesis error:', event);
+            };
+            
+            speechSynthesis.speak(utterance);
+          });
+        } else {
+          showStatus('Speech synthesis not supported in this browser', 'error');
+        }
+      } catch (error) {
+        showStatus(error.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // File upload handling with preview
+    document.getElementById('imageInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      const fileName = document.getElementById('fileName');
+      
+      if (file) {
+        fileName.textContent = `Selected: ${file.name}`;
+        handleImageUpload(file);
+      } else {
+        fileName.textContent = '';
+      }
+    });
+
+    async function handleImageUpload(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      showLoading();
+      try {
+        const response = await fetch('/image-to-text', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById('inputText').value = data.text;
+        showStatus('Image text extracted successfully');
+      } catch (error) {
+        showStatus(error.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    const aiTyping = document.getElementById('aiTyping');
+
+    document.getElementById('openChat').addEventListener('click', () => {
+      document.getElementById('mainSection').classList.add('hidden');
+      document.getElementById('openChat').classList.add('hidden');
+      document.getElementById('chatSection').classList.remove('hidden');
+    });
+
+    document.getElementById('backButton').addEventListener('click', () => {
+      document.getElementById('mainSection').classList.remove('hidden');
+      document.getElementById('openChat').classList.remove('hidden');
+      document.getElementById('chatSection').classList.add('hidden');
+    });
+
+    async function sendChatMessage(message) {
+      try {
+        aiTyping.style.display = 'flex';
+
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        setTimeout(() => {
+          aiTyping.style.display = 'none';
+          addMessage(data.response, false);
+        }, 1000);
+
+      } catch (error) {
+        aiTyping.style.display = 'none';
+        addMessage("Sorry, I couldn't process your message.", false);
+      }
+    }
+
+    function addMessage(message, isUser) {
+      const chatMessages = document.getElementById('chatMessages');
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${isUser ? 'user-bubble' : 'ai-bubble'}`;
+      bubble.textContent = message;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    document.getElementById('sendMessage').addEventListener('click', () => {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+
+      if (message) {
+        addMessage(message, true);
+        input.value = '';
+        sendChatMessage(message);
+      }
+    });
+
+    document.getElementById('chatInput').addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        document.getElementById('sendMessage').click();
+      }
+    });
+  </script>
+</body>
+</html>
