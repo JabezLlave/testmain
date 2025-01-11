@@ -3,8 +3,6 @@ from flask_cors import CORS
 from googletrans import Translator
 import speech_recognition as sr
 import os
-import pytesseract
-from PIL import Image
 import logging
 import random
 from dotenv import load_dotenv
@@ -61,11 +59,6 @@ CULTURAL_RESPONSES = {
         "Chinese New Year celebrations last for 15 days."
     ]
 }
-
-# Health check endpoint
-@app.route('/health')
-def health_check():
-    return jsonify({'status': 'healthy'}), 200
 
 @app.route('/')
 def home():
@@ -124,18 +117,10 @@ def speech_to_text():
 
 @app.route('/image-to-text', methods=['POST'])
 def image_to_text():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image file provided'}), 400
-        
-    image_file = request.files['image']
-    
-    try:
-        image = Image.open(image_file)
-        text = pytesseract.image_to_string(image)
-        return jsonify({'text': text.strip()})
-    except Exception as e:
-        logger.error(f"Image-to-text error: {str(e)}")
-        return jsonify({'error': 'Image processing failed'}), 500
+    return jsonify({
+        'text': 'Image to text feature is currently under maintenance. Please try again later.',
+        'status': 'maintenance'
+    }), 503
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -161,18 +146,7 @@ def chat():
         logger.error(f"Chat error: {str(e)}")
         return jsonify({'error': 'Chat service unavailable'}), 500
 
-# Error handlers
-@app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({'error': 'Not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
 if __name__ == '__main__':
-    # Get port from environment variable for production
-    port = int(os.environ.get("PORT", 10000))
-    # In production, debug should be False
-    debug = os.environ.get("FLASK_ENV") == "development"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    port = int(os.environ.get('PORT', 10000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)
