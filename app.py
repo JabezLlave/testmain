@@ -64,6 +64,10 @@ CULTURAL_RESPONSES = {
 def home():
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy'}), 200
+
 @app.route('/translate', methods=['POST'])
 def translate():
     try:
