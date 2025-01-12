@@ -134,6 +134,9 @@ def chat():
         if any(word in message for word in ["hello", "hi", "hey"]):
             response = "Hello! I can help you learn about different cultures. Which culture interests you?"
 
+        if any(word in message for word in ["who is Jabez Llave", "Jabez ", "Jabez Llave", "jabez", "who is jabez llave"]):
+            response = "The developer of this site is Jabez Llave, a grade 12 STEM Student who want to improve the social media world."    
+
         elif any(lang.lower() in message for lang in LANGUAGE_OPTIONS.keys()):
             for lang, code in LANGUAGE_OPTIONS.items():
                 if lang.lower() in message and code in CULTURAL_RESPONSES:
